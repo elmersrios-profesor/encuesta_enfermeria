@@ -33,7 +33,7 @@
     </div>
 
     <script>
-        // Enlace oficial corregido y sincronizado con tu hoja de respuestas
+        // Enlace corregido con la nomenclatura exacta de tu Google Sheets publicado
         const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSXxzZgJE30nOVW_8YFjYimETkXXDyCyKs1GOKOO-tPJSwSY4-bmHzVazdZhw8sZtOZC034lpMOVAp4/pub?gid=1120900988&single=true&output=csv";
 
         Chart.register(ChartDataLabels);
@@ -43,7 +43,7 @@
                 const response = await fetch(sheetUrl);
                 const dataText = await response.text();
                 
-                // Dividir el CSV por filas y limpiar espacios raros
+                // Procesar filas de manera limpia
                 const lineas = dataText.split(/\r?\n/).filter(linea => linea.trim() !== "");
                 
                 const registros = lineas.map(linea => {
@@ -78,7 +78,7 @@
                 const grid = document.getElementById('chartsGrid');
                 grid.style.display = 'grid';
 
-                // Empezamos en la columna 1 para ignorar la marca de tiempo de Google
+                // Empezamos desde la columna 1 para saltarnos la fecha/hora
                 for (let col = 1; col < encabezados.length; col++) {
                     const tituloPregunta = encabezados[col];
                     if(!tituloPregunta) continue;
@@ -139,7 +139,7 @@
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('loader').innerText = "Error de sincronización. Verifica que la hoja siga compartida.";
+                document.getElementById('loader').innerText = "Error de sincronización con Google Sheets.";
             }
         }
 
