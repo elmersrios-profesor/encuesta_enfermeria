@@ -14,15 +14,12 @@
         .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
         .loading { text-align: center; font-size: 1.2rem; color: #0d9488; font-weight: bold; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         
-        /* Estilos de Sección de Dimensiones */
         .seccion-titulo { font-size: 1.7rem; color: #0f172a; margin-top: 40px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #0d9488; font-weight: 700; width: 100%; }
-        
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 30px; margin-bottom: 50px; }
         .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
         .card h3 { margin-top: 0; margin-bottom: 20px; color: #0f172a; font-size: 1.1rem; border-left: 4px solid #3b82f6; padding-left: 10px; line-height: 1.4; }
         .chart-container { position: relative; width: 100%; height: 250px; margin-bottom: 20px; display: flex; justify-content: center; }
         
-        /* Estilos para las tablas estadísticas */
         .table-container { width: 100%; margin-top: 15px; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
         th { background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #e2e8f0; }
@@ -40,17 +37,22 @@
     </div>
 
     <div class="container">
-        <div id="loader" class="loading">Cargando base de datos y organizando dimensiones estadísticas...</div>
+        <div id="loader" class="loading">Cargando base de datos y calculando dimensiones...</div>
         
-        <div id="tituloBloque1" class="seccion-titulo" style="display: none;">Cuidado humanizado de enfermería</div>
+        <!-- Bloque Datos Demográficos (Género) -->
+        <div id="tituloDemograficos" class="seccion-titulo" style="display: none;">Datos Demográficos de la Muestra</div>
+        <div id="gridDemograficos" class="grid" style="display: none;"></div>
+
+        <!-- Bloque 1 -->
+        <div id="tituloBloque1" class="seccion-titulo" style="display: none;">Dimensión 1: Cuidado humanizado de enfermería</div>
         <div id="gridBloque1" class="grid" style="display: none;"></div>
 
-        <div id="tituloBloque2" class="seccion-titulo" style="display: none;">Recuperación del paciente adulto hospitalizado</div>
+        <!-- Bloque 2 -->
+        <div id="tituloBloque2" class="seccion-titulo" style="display: none;">Dimensión 2: Recuperación del paciente adulto hospitalizado</div>
         <div id="gridBloque2" class="grid" style="display: none;"></div>
     </div>
 
     <script>
-        // Enlace oficial de datos
         const sheetUrl = "https://docs.google.com/spreadsheets/d/1P7bLlbi_oIlflUuqKsR5O90te2D7IyjXudIDpAdteFI/export?format=csv&gid=1120900988";
 
         Chart.register(ChartDataLabels);
@@ -88,29 +90,37 @@
 
                 document.getElementById('loader').style.display = 'none';
                 
+                const gridDemo = document.getElementById('gridDemograficos');
                 const grid1 = document.getElementById('gridBloque1');
                 const grid2 = document.getElementById('gridBloque2');
                 
+                document.getElementById('tituloDemograficos').style.display = 'block';
                 document.getElementById('tituloBloque1').style.display = 'block';
                 document.getElementById('tituloBloque2').style.display = 'block';
+                
+                gridDemo.style.display = 'grid';
                 grid1.style.display = 'grid';
                 grid2.style.display = 'grid';
 
                 let contadorPreguntasValidas = 0;
 
-                // Recorrer todas las columnas de la hoja
+                // --- PROCESAR CADA COLUMNA ---
                 for (let col = 1; col < encabezados.length; col++) {
                     const tituloPregunta = encabezados[col].replace(/^"|"$/g, '').trim();
                     if(!tituloPregunta) continue;
 
-                    // FILTRO EXPLICITO: Omitir Fecha/Marca de tiempo y la variable de Edad o Género
                     const tituloMinuscula = tituloPregunta.toLowerCase();
-                    if (tituloMinuscula.includes("marca de tiempo") || tituloMinuscula.includes("fecha") || tituloMinuscula.includes("edad") || tituloMinuscula.includes("sexo") || tituloMinuscula.includes("género")) {
+                    
+                    // Omitir marcas de tiempo o fechas
+                    if (tituloMinuscula.includes("marca de tiempo") || tituloMinuscula.includes("fecha") || tituloMinuscula.includes("edad")) {
                         continue; 
                     }
 
-                    // Si pasó el filtro, es una pregunta válida del instrumento (P1 a P10)
-                    contadorPreguntasValidas++;
+                    // Determinar si es la columna de Género/Sexo o una pregunta
+                    const esGenero = tituloMinuscula.includes("sexo") || tituloMinuscula.includes("género");
+                    if (!esGenero) {
+                        contadorPreguntasValidas++;
+                    }
 
                     const conteo = {};
                     filasDatos.forEach(fila => {
@@ -126,7 +136,7 @@
                     const dataValues = Object.values(conteo);
                     const totalRespuestas = dataValues.reduce((a, b) => a + b, 0);
 
-                    // Crear la tarjeta HTML
+                    // Estructurar Tarjeta HTML
                     const card = document.createElement('div');
                     card.className = 'card';
                     
@@ -143,8 +153,10 @@
                         `;
                     });
 
+                    const labelTabla = esGenero ? "Género" : "Alternativa";
+
                     card.innerHTML = `
-                        <h3>P${contadorPreguntasValidas}. ${tituloPregunta}</h3>
+                        <h3>${esGenero ? tituloPregunta : 'P' + contadorPreguntasValidas + '. ' + tituloPregunta}</h3>
                         <div class="chart-container">
                             <canvas id="chart-${col}"></canvas>
                         </div>
@@ -152,7 +164,7 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Alternativa</th>
+                                        <th>${labelTabla}</th>
                                         <th style="text-align: center;">Frecuencia (f)</th>
                                         <th style="text-align: center;">Porcentaje (%)</th>
                                     </tr>
@@ -169,15 +181,16 @@
                         </div>
                     `;
 
-                    // DISTRIBUCIÓN POR BLOQUES SOLICITADA
-                    // Preguntas 1 a 5 van al bloque de Cuidado Humanizado, 6 a 10 al bloque de Recuperación
-                    if (contadorPreguntasValidas <= 5) {
+                    // Inserción en el bloque correspondiente de la pantalla
+                    if (esGenero) {
+                        gridDemo.appendChild(card);
+                    } else if (contadorPreguntasValidas <= 5) {
                         grid1.appendChild(card);
                     } else if (contadorPreguntasValidas <= 10) {
                         grid2.appendChild(card);
                     }
 
-                    // Renderizar Gráfico
+                    // Dibujar el Gráfico
                     const ctx = document.getElementById(`chart-${col}`).getContext('2d');
                     new Chart(ctx, {
                         type: 'bar',
@@ -185,7 +198,7 @@
                             labels: labels,
                             datasets: [{
                                 data: dataValues,
-                                backgroundColor: ['#0d9488', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'],
+                                backgroundColor: esGenero ? ['#3b82f6', '#ec4899'] : ['#0d9488', '#f59e0b', '#ef4444'],
                                 borderRadius: 6
                             }]
                         },
@@ -215,7 +228,7 @@
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('loader').innerText = "Error de sincronización. Asegúrate de haber guardado los permisos públicos en Sheets.";
+                document.getElementById('loader').innerText = "Error de sincronización. Comprueba los permisos de tu Google Sheets.";
             }
         }
 
