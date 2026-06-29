@@ -15,6 +15,12 @@
         .loading { text-align: center; font-size: 1.2rem; color: #0d9488; font-weight: bold; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         
         .seccion-titulo { font-size: 1.7rem; color: #0f172a; margin-top: 40px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #0d9488; font-weight: 700; width: 100%; }
+        
+        /* Estilo destacado para los Resúmenes Globales de Dimensión */
+        .resumen-global-container { width: 100%; display: flex; justify-content: center; margin-bottom: 35px; }
+        .card-resumen-dimension { background: #f0fdfa; border: 2px solid #0d9488; border-radius: 14px; padding: 26px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); width: 100%; max-width: 700px; display: flex; flex-direction: column; align-items: center; }
+        .card-resumen-dimension h4 { margin-top: 0; margin-bottom: 15px; color: #115e59; font-size: 1.3rem; text-align: center; font-weight: 700; }
+        
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 30px; margin-bottom: 50px; }
         .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
         .card h3 { margin-top: 0; margin-bottom: 20px; color: #0f172a; font-size: 1.1rem; border-left: 4px solid #3b82f6; padding-left: 10px; line-height: 1.4; }
@@ -39,16 +45,15 @@
     <div class="container">
         <div id="loader" class="loading">Cargando base de datos y calculando dimensiones...</div>
         
-        <!-- Bloque Datos Demográficos (Género) -->
         <div id="tituloDemograficos" class="seccion-titulo" style="display: none;">Datos Demográficos de la Muestra</div>
         <div id="gridDemograficos" class="grid" style="display: none;"></div>
 
-        <!-- Bloque 1 -->
         <div id="tituloBloque1" class="seccion-titulo" style="display: none;">Dimensión 1: Cuidado humanizado de enfermería</div>
+        <div id="resumenGlobal1" class="resumen-global-container" style="display: none;"></div>
         <div id="gridBloque1" class="grid" style="display: none;"></div>
 
-        <!-- Bloque 2 -->
         <div id="tituloBloque2" class="seccion-titulo" style="display: none;">Dimensión 2: Recuperación del paciente adulto hospitalizado</div>
+        <div id="resumenGlobal2" class="resumen-global-container" style="display: none;"></div>
         <div id="gridBloque2" class="grid" style="display: none;"></div>
     </div>
 
@@ -94,29 +99,23 @@
                 const grid1 = document.getElementById('gridBloque1');
                 const grid2 = document.getElementById('gridBloque2');
                 
-                document.getElementById('tituloDemograficos').style.display = 'block';
-                document.getElementById('tituloBloque1').style.display = 'block';
-                document.getElementById('tituloBloque2').style.display = 'block';
-                
-                gridDemo.style.display = 'grid';
-                grid1.style.display = 'grid';
-                grid2.style.display = 'grid';
-
                 let contadorPreguntasValidas = 0;
 
-                // --- PROCESAR CADA COLUMNA ---
+                // Objetos para acumular los totales globales de cada dimensión
+                const resumenDimension1 = {};
+                const resumenDimension2 = {};
+
+                // --- PRIMERA PASADA: PROCESAR CADA COLUMNA INDIVIDUAL Y ACUMULAR TOTALES ---
                 for (let col = 1; col < encabezados.length; col++) {
                     const tituloPregunta = encabezados[col].replace(/^"|"$/g, '').trim();
                     if(!tituloPregunta) continue;
 
                     const tituloMinuscula = tituloPregunta.toLowerCase();
                     
-                    // Omitir marcas de tiempo o fechas
                     if (tituloMinuscula.includes("marca de tiempo") || tituloMinuscula.includes("fecha") || tituloMinuscula.includes("edad")) {
                         continue; 
                     }
 
-                    // Determinar si es la columna de Género/Sexo o una pregunta
                     const esGenero = tituloMinuscula.includes("sexo") || tituloMinuscula.includes("género");
                     if (!esGenero) {
                         contadorPreguntasValidas++;
@@ -126,7 +125,18 @@
                     filasDatos.forEach(fila => {
                         if (fila[col]) {
                             const valor = fila[col].replace(/^"|"$/g, '').trim();
-                            if(valor) conteo[valor] = (conteo[valor] || 0) + 1;
+                            if(valor) {
+                                conteo[valor] = (conteo[valor] || 0) + 1;
+                                
+                                // Acumulador para resúmenes de dimensiones (omitir el género)
+                                if (!esGenero) {
+                                    if (contadorPreguntasValidas <= 5) {
+                                        resumenDimension1[valor] = (resumenDimension1[valor] || 0) + 1;
+                                    } else if (contadorPreguntasValidas <= 10) {
+                                        resumenDimension2[valor] = (resumenDimension2[valor] || 0) + 1;
+                                    }
+                                }
+                            }
                         }
                     });
 
@@ -136,100 +146,129 @@
                     const dataValues = Object.values(conteo);
                     const totalRespuestas = dataValues.reduce((a, b) => a + b, 0);
 
-                    // Estructurar Tarjeta HTML
+                    // Estructurar e Insertar Tarjeta Individual
                     const card = document.createElement('div');
                     card.className = 'card';
-                    
                     let filasTablaHtml = "";
                     labels.forEach((label, index) => {
                         let cant = dataValues[index];
                         let porc = ((cant / totalRespuestas) * 100).toFixed(1);
-                        filasTablaHtml += `
-                            <tr>
-                                <td>${label}</td>
-                                <td style="text-align: center;">${cant}</td>
-                                <td style="text-align: center;">${porc}%</td>
-                            </tr>
-                        `;
+                        filasTablaHtml += `<tr><td>${label}</td><td style="text-align: center;">${cant}</td><td style="text-align: center;">${porc}%</td></tr>`;
                     });
-
-                    const labelTabla = esGenero ? "Género" : "Alternativa";
 
                     card.innerHTML = `
                         <h3>${esGenero ? tituloPregunta : 'P' + contadorPreguntasValidas + '. ' + tituloPregunta}</h3>
-                        <div class="chart-container">
-                            <canvas id="chart-${col}"></canvas>
-                        </div>
+                        <div class="chart-container"><canvas id="chart-${col}"></canvas></div>
                         <div class="table-container">
                             <table>
-                                <thead>
-                                    <tr>
-                                        <th>${labelTabla}</th>
-                                        <th style="text-align: center;">Frecuencia (f)</th>
-                                        <th style="text-align: center;">Porcentaje (%)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${filasTablaHtml}
-                                    <tr>
-                                        <td><strong>Total</strong></td>
-                                        <td style="text-align: center;"><strong>${totalRespuestas}</strong></td>
-                                        <td style="text-align: center;"><strong>100.0%</strong></td>
-                                    </tr>
-                                </tbody>
+                                <thead><tr><th>${esGenero ? "Género" : "Alternativa"}</th><th style="text-align: center;">Frecuencia (f)</th><th style="text-align: center;">Porcentaje (%)</th></tr></thead>
+                                <tbody>${filasTablaHtml}<tr><td><strong>Total</strong></td><td style="text-align: center;"><strong>${totalRespuestas}</strong></td><td style="text-align: center;"><strong>100.0%</strong></td></tr></tbody>
                             </table>
-                        </div>
-                    `;
+                        </div>`;
 
-                    // Inserción en el bloque correspondiente de la pantalla
                     if (esGenero) {
+                        document.getElementById('tituloDemograficos').style.display = 'block';
+                        gridDemo.style.display = 'grid';
                         gridDemo.appendChild(card);
                     } else if (contadorPreguntasValidas <= 5) {
+                        document.getElementById('tituloBloque1').style.display = 'block';
+                        grid1.style.display = 'grid';
                         grid1.appendChild(card);
                     } else if (contadorPreguntasValidas <= 10) {
+                        document.getElementById('tituloBloque2').style.display = 'block';
+                        grid2.style.display = 'grid';
                         grid2.appendChild(card);
                     }
 
-                    // Dibujar el Gráfico
+                    // Renderizado del gráfico individual
                     const ctx = document.getElementById(`chart-${col}`).getContext('2d');
                     new Chart(ctx, {
                         type: 'bar',
                         data: {
                             labels: labels,
-                            datasets: [{
-                                data: dataValues,
-                                backgroundColor: esGenero ? ['#3b82f6', '#ec4899'] : ['#0d9488', '#f59e0b', '#ef4444'],
-                                borderRadius: 6
-                            }]
+                            datasets: [{ data: dataValues, backgroundColor: esGenero ? ['#ec4899', '#3b82f6'] : ['#0d9488', '#f59e0b', '#ef4444'], borderRadius: 6 }]
                         },
                         options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                datalabels: {
-                                    anchor: 'end',
-                                    align: 'top',
-                                    formatter: (value) => {
-                                        let porcentaje = ((value / totalRespuestas) * 100).toFixed(1);
-                                        return `${value} (${porcentaje}%)`;
-                                    },
-                                    font: { weight: 'bold', size: 11 },
-                                    color: '#475569'
-                                }
-                            },
-                            scales: {
-                                y: { beginAtZero: true, ticks: { stepSize: 1, color: '#64748b' }, grid: { color: '#f1f5f9' } },
-                                x: { ticks: { color: '#64748b' }, grid: { display: false } }
-                            }
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', formatter: (value) => `${value} (${((value / totalRespuestas) * 100).toFixed(1)}%)`, font: { weight: 'bold', size: 10 }, color: '#475569' } },
+                            scales: { y: { beginAtZero: true, ticks: { stepSize: 1, color: '#64748b' } }, x: { ticks: { color: '#64748b' }, grid: { display: false } } }
                         }
                     });
                 }
 
+                // --- SEGUNDA PASADA: GENERAR LOS DOS CUADROS DE RESUMEN GLOBAL ---
+                generarCuadroResumenGlobal("resumenGlobal1", "CUADRO DE RESUMEN GLOBAL: Dimensión 1", resumenDimension1, "chart-global-1");
+                generarCuadroResumenGlobal("resumenGlobal2", "CUADRO DE RESUMEN GLOBAL: Dimensión 2", resumenDimension2, "chart-global-2");
+
             } catch (error) {
                 console.error(error);
-                document.getElementById('loader').innerText = "Error de sincronización. Comprueba los permisos de tu Google Sheets.";
+                document.getElementById('loader').innerText = "Error de sincronización con Google Sheets.";
             }
+        }
+
+        // Función auxiliar para construir tablas y gráficos agregados por Dimensión
+        function generarCuadroResumenGlobal(contenedorId, titulo, dataObjeto, chartId) {
+            const contenedor = document.getElementById(contenedorId);
+            const labels = Object.keys(dataObjeto);
+            const dataValues = Object.values(dataObjeto);
+            const total = dataValues.reduce((a, b) => a + b, 0);
+
+            if (total === 0) return;
+            contenedor.style.display = 'flex';
+
+            let filasHtml = "";
+            labels.forEach((label, idx) => {
+                let cant = dataValues[idx];
+                let porc = ((cant / total) * 100).toFixed(1);
+                filasHtml += `<tr><td><strong>${label}</strong></td><td style="text-align: center;">${cant}</td><td style="text-align: center;">${porc}%</td></tr>`;
+            });
+
+            contenedor.innerHTML = `
+                <div class="card-resumen-dimension">
+                    <h4>${titulo}</h4>
+                    <div class="chart-container" style="height: 220px; width:100%; max-width:500px;">
+                        <canvas id="${chartId}"></canvas>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Criterio Evaluado</th>
+                                    <th style="text-align: center;">Total Respuestas (f)</th>
+                                    <th style="text-align: center;">Porcentaje Global (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filasHtml}
+                                <tr>
+                                    <td><strong>Carga Total de Dimensión</strong></td>
+                                    <td style="text-align: center;"><strong>${total}</strong></td>
+                                    <td style="text-align: center;"><strong>100.0%</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            const ctx = document.getElementById(chartId).getContext('2d');
+            new Chart(ctx, {
+                type: 'pie', // Formato de pastel para los resúmenes de tesis
+                data: {
+                    labels: labels,
+                    datasets: [{ data: dataValues, backgroundColor: ['#0f766e', '#d97706', '#dc2626', '#2563eb'], borderHoverWidth: 3 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'bottom', labels: { boxWidth: 12, color: '#334155' } },
+                        datalabels: {
+                            formatter: (value) => `${((value / total) * 100).toFixed(1)}%`,
+                            color: '#fff', font: { weight: 'bold', size: 12 }
+                        }
+                    }
+                }
+            });
         }
 
         window.onload = cargarDatos;
