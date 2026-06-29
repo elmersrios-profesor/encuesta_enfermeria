@@ -33,7 +33,7 @@
     </div>
 
     <script>
-        // Enlace automático extraído de la captura image_d9b156.png
+        // Enlace oficial corregido y sincronizado con tu hoja de respuestas
         const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSXxzZgJE30nOVW_8YFjYimETkXXDyCyKs1GOKOO-tPJSwSY4-bmHzVazdZhw8sZtOZC034lpMOVAp4/pub?gid=1120900988&single=true&output=csv";
 
         Chart.register(ChartDataLabels);
@@ -43,46 +43,61 @@
                 const response = await fetch(sheetUrl);
                 const dataText = await response.text();
                 
-                // Procesar filas del CSV de forma segura
-                const filas = dataText.split(/\r?\n/).map(f => {
-                    // Manejar comillas por si hay respuestas largas o con comas
-                    return f.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || f.split(',');
-                }).filter(f => f.length > 1);
+                // Dividir el CSV por filas y limpiar espacios raros
+                const lineas = dataText.split(/\r?\n/).filter(linea => linea.trim() !== "");
+                
+                const registros = lineas.map(linea => {
+                    let resultado = [];
+                    let dentroDeComillas = false;
+                    let celdaActual = "";
+                    
+                    for (let i = 0; i < linea.length; i++) {
+                        let char = linea[i];
+                        if (char === '"') {
+                            dentroDeComillas = !dentroDeComillas;
+                        } else if (char === ',' && !dentroDeComillas) {
+                            resultado.push(celdaActual.trim());
+                            celdaActual = "";
+                        } else {
+                            celdaActual += char;
+                        }
+                    }
+                    resultado.push(celdaActual.trim());
+                    return resultado;
+                });
 
-                if (filas.length <= 1) {
-                    document.getElementById('loader').innerText = "Aún no hay respuestas registradas en el formulario.";
+                if (registros.length <= 1) {
+                    document.getElementById('loader').innerText = "Conexión exitosa, pero la hoja no registra respuestas válidas aún.";
                     return;
                 }
 
-                const encabezados = filas[0].map(h => h.replace(/"/g, '').trim());
-                const registros = filas.slice(1);
+                const encabezados = registros[0];
+                const filasDatos = registros.slice(1);
 
                 document.getElementById('loader').style.display = 'none';
                 const grid = document.getElementById('chartsGrid');
                 grid.style.display = 'grid';
 
-                // Graficar a partir de la columna 1 (ignora la marca de tiempo)
+                // Empezamos en la columna 1 para ignorar la marca de tiempo de Google
                 for (let col = 1; col < encabezados.length; col++) {
                     const tituloPregunta = encabezados[col];
+                    if(!tituloPregunta) continue;
                     
-                    // Contar frecuencias de respuesta
                     const conteo = {};
-                    registros.forEach(reg => {
-                        if (reg[col]) {
-                            const valor = reg[col].replace(/"/g, '').trim();
+                    filasDatos.forEach(fila => {
+                        if (fila[col]) {
+                            const valor = fila[col].replace(/^"|"$/g, '').trim();
                             if(valor) conteo[valor] = (conteo[valor] || 0) + 1;
                         }
                     });
 
                     if (Object.keys(conteo).length === 0) continue;
 
-                    // Crear Tarjeta para el Gráfico
                     const card = document.createElement('div');
                     card.className = 'card';
                     card.innerHTML = `<h3>${tituloPregunta}</h3><div class="chart-container"><canvas id="chart-${col}"></canvas></div>`;
                     grid.appendChild(card);
 
-                    // Configurar datos para Chart.js
                     const labels = Object.keys(conteo);
                     const dataValues = Object.values(conteo);
                     const totalRespuestas = dataValues.reduce((a, b) => a + b, 0);
@@ -115,8 +130,8 @@
                                 }
                             },
                             scales: {
-                                y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } },
-                                x: { grid: { display: false } }
+                                y: { beginAtZero: true, ticks: { stepSize: 1, color: '#64748b' }, grid: { color: '#f1f5f9' } },
+                                x: { ticks: { color: '#64748b' }, grid: { display: false } }
                             }
                         }
                     });
@@ -124,7 +139,7 @@
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('loader').innerText = "Error al conectar en tiempo real con las respuestas.";
+                document.getElementById('loader').innerText = "Error de sincronización. Verifica que la hoja siga compartida.";
             }
         }
 
