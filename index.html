@@ -3,244 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte Estadístico Automatizado</title>
+    <title>Análisis Estadístico de Muestra Automatizado</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <style>
-        body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 30px; color: #1e293b; }
-        .container { max-width: 1150px; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 40px; background: linear-gradient(135deg, #0f172a, #0d9488); color: white; padding: 35px 20px; border-radius: 20px; box-shadow: 0 10px 30px -5px rgba(13, 148, 136, 0.25); }
-        header h1 { margin: 0; font-size: 2.2rem; font-weight: 700; letter-spacing: -0.03em; }
-        header p { margin: 12px 0 0 0; opacity: 0.9; font-size: 1.1rem; }
-        
-        /* Zona de carga de archivo */
-        .upload-zone { border: 3px dashed #0d9488; background: #f0fdf4; padding: 30px; border-radius: 18px; text-align: center; margin-bottom: 40px; cursor: pointer; transition: 0.2s; }
-        .upload-zone:hover { background: #e6fbf1; }
-        .upload-zone input { display: none; }
-        .upload-zone label { font-size: 1.2rem; font-weight: 600; color: #115e59; cursor: pointer; }
-        
-        h2 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-top: 50px; font-size: 1.6rem; font-weight: 600; }
-        .card { background: white; padding: 28px; border-radius: 18px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03); margin-bottom: 35px; border: 1px solid #f1f5f9; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 35px; }
-        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
-        .canvas-container { position: relative; height: 300px; width: 100%; }
-        .pregunta-titulo { font-weight: 600; font-size: 1.15rem; margin-bottom: 22px; color: #334155; line-height: 1.6; border-left: 4px solid #0d9488; padding-left: 12px; }
-        .badge { display: inline-block; padding: 6px 14px; background: #f0fdf4; border-radius: 30px; font-weight: 600; color: #115e59; }
+        body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; color: #1e293b; }
+        .header { text-align: center; padding: 30px 20px; background: linear-gradient(135deg, #0f172a, #0d9488); color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .header h1 { margin: 0; font-size: 2.2rem; font-weight: 700; letter-spacing: -0.03em; }
+        .header p { margin: 10px 0 0 0; opacity: 0.9; font-size: 1.1rem; }
+        .container { max-width: 1150px; margin: 30px auto; padding: 0 20px; }
+        .loading { text-align: center; font-size: 1.2rem; color: #0d9488; font-weight: bold; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; }
+        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; }
+        .card h3 { margin-top: 0; margin-bottom: 20px; color: #0f172a; font-size: 1.15rem; width: 100%; text-align: left; border-left: 4px solid #0d9488; padding-left: 10px; }
+        .chart-container { position: relative; width: 100%; height: 320px; display: flex; justify-content: center; }
+        @media (max-width: 500px) { .grid { grid-template-columns: 1fr; } .chart-container { height: 280px; } }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <header>
+    <div class="header">
         <h1>Análisis Estadístico de Muestra Automatizado</h1>
-        <p id="total-pacientes">Por favor, carga el archivo de respuestas para generar los gráficos.</p>
-    </header>
-
-    <!-- Zona interactiva para subir el CSV descargado -->
-    <div class="upload-zone" onclick="document.getElementById('csvFile').click()">
-        <label for="csvFile">📊 Haz clic aquí para seleccionar o arrastrar tu archivo (.csv) descargado</label>
-        <input type="file" id="csvFile" accept=".csv">
+        <p>Reporte en tiempo real conectado a Google Sheets</p>
     </div>
 
-    <div id="contenido-reporte" style="display: none;">
-        <h2>1. Variables Demográficas</h2>
-        <div class="card grid-2">
-            <div style="display: flex; flex-direction: column; justify-content: center;">
-                <p class="pregunta-titulo" style="border-left-color: #3b82f6;">Distribución General por Sexo</p>
-                <p>• Masculinos: <span class="badge" id="txt-masc" style="background:#eff6ff; color:#1e40af;">0</span></p>
-                <p>• Femeninos: <span class="badge" id="txt-fem" style="background:#fdf2f8; color:#9d174d;">0</span></p>
-            </div>
-            <div class="canvas-container">
-                <canvas id="graficoSexo"></canvas>
-            </div>
-        </div>
-
-        <h2>2. Indicadores Globales por Dimensión</h2>
-        <div class="grid-2">
-            <div class="card">
-                <p class="pregunta-titulo">Dimensión I: Cuidado Humanizado de Enfermería</p>
-                <div class="canvas-container">
-                    <canvas id="dimCuidado"></canvas>
-                </div>
-            </div>
-            <div class="card">
-                <p class="pregunta-titulo">Dimensión II: Recuperación del Paciente Adulto Hospitalizado</p>
-                <div class="canvas-container">
-                    <canvas id="dimRecuperacion"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <h2>3. Desglose Analítico por Ítem</h2>
-        <div id="preguntas-contenedor"></div>
+    <div class="container">
+        <div id="loader" class="loading">Cargando datos en tiempo real desde Google Sheets...</div>
+        <div id="chartsGrid" class="grid" style="display: none;"></div>
     </div>
-</div>
 
-<script>
-Chart.register(ChartDataLabels);
-const coloresElegantes = ['#0d9488', '#3b82f6', '#f59e0b', '#f97316', '#ef4444'];
-const escalas = ["Siempre", "Frecuentemente", "A veces", "Rara vez", "Nunca"];
-let graficosActivos = [];
+    <script>
+        // Enlace automático extraído de la captura image_d9b156.png
+        const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSXxzZgJE30nOVW_8YFjYimETkXXDyCyKs1GOKOO-tPJSwSY4-bmHzVazdZhw8sZtOZC034lpMOVAp4/pub?gid=1120900988&single=true&output=csv";
 
-const opcionesComunes = (esPastel, total) => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: { display: esPastel, position: 'right' },
-        datalabels: {
-            formatter: (value) => {
-                if (value === 0) return '';
-                let pct = ((value / total) * 100).toFixed(1) + '%';
-                return esPastel ? pct : value + ' (' + pct + ')';
-            },
-            color: esPastel ? '#fff' : '#1e293b',
-            anchor: esPastel ? 'center' : 'end',
-            align: esPastel ? 'center' : 'top',
-            font: { weight: '700', size: 12 }
-        }
-    },
-    scales: esPastel ? {} : { y: { beginAtZero: true, grace: '15%' } }
-});
+        Chart.register(ChartDataLabels);
 
-const textosPreguntas = [
-    "El personal de enfermería me trató con respeto durante mi hospitalización.",
-    "El personal de enfermería mostró empatía frente a mis necesidades y preocupaciones.",
-    "El personal de enfermería me brindó información clara y comprensible sobre mi atención y tratamiento.",
-    "El personal de enfermería escuchó atentamente mis dudas o inquietudes.",
-    "El personal de enfermería me brindó apoyo emocional durante mi estancia hospitalaria.",
-    "Durante mi hospitalización percibí una mejoría en mi estado de salud.",
-    "Me sentí tranquilo(a) y seguro(a) durante mi proceso de recuperación.",
-    "Cumplí con las indicaciones brindadas por el personal de salud para favorecer mi recuperación.",
-    "Considero que los cuidados recibidos contribuyeron a mi recuperación.",
-    "Me sentí satisfecho(a) con mi proceso de recuperación durante la hospitalización."
-];
+        async function cargarDatos() {
+            try {
+                const response = await fetch(sheetUrl);
+                const dataText = await response.text();
+                
+                // Procesar filas del CSV de forma segura
+                const filas = dataText.split(/\r?\n/).map(f => {
+                    // Manejar comillas por si hay respuestas largas o con comas
+                    return f.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || f.split(',');
+                }).filter(f => f.length > 1);
 
-// Procesador de CSV local (soporta comas y puntos y comas)
-function parsearCSV(texto) {
-    let lineas = texto.split(/\r?\n/);
-    return lineas.map(linea => {
-        let resultado = [];
-        let dentroComillas = false;
-        let entradaActual = '';
-        let separador = linea.includes(';') ? ';' : ',';
-        
-        for (let i = 0; i < linea.length; i++) {
-            let char = linea[i];
-            if (char === '"') { dentroComillas = !dentroComillas; }
-            else if (char === separador && !dentroComillas) {
-                resultado.push(entradaActual.trim());
-                entradaActual = '';
-            } else { entradaActual += char; }
-        }
-        resultado.push(entradaActual.trim());
-        return resultado;
-    }).filter(l => l.length > 1 && l[0] !== "");
-}
-
-document.getElementById('csvFile').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const lector = new FileReader();
-    lector.onload = function(evt) {
-        procesarDatos(evt.target.result);
-    };
-    lector.readAsText(file, 'UTF-8');
-});
-
-function procesarDatos(textoCSV) {
-    // Limpiar gráficos anteriores si existen
-    graficosActivos.forEach(g => g.destroy());
-    graficosActivos = [];
-    document.getElementById('preguntas-contenedor').innerHTML = '';
-
-    const filas = parsearCSV(textoCSV);
-    const cabecera = filas[0];
-    const registros = filas.slice(1);
-    const totalPacientes = registros.length;
-
-    const colSexoIdx = cabecera.findIndex(c => c.toLowerCase().includes('sexo') || c.toLowerCase().includes('género'));
-    
-    let masc = 0, fem = 0;
-    let conteosPreguntas = Array.from({ length: 10 }, () => [0, 0, 0, 0, 0]);
-    let dimCuidado = [0, 0, 0, 0, 0];
-    let dimRecuperacion = [0, 0, 0, 0, 0];
-
-    registros.forEach(fila => {
-        if (colSexoIdx !== -1 && fila[colSexoIdx]) {
-            let valSexo = fila[colSexoIdx].toLowerCase();
-            if (valSexo.startsWith('m')) masc++;
-            else if (valSexo.startsWith('f')) fem++;
-        }
-
-        textosPreguntas.forEach((texto, pIdx) => {
-            let colIdx = cabecera.findIndex(c => c.toLowerCase().replace(/\s+/g, '').includes(texto.toLowerCase().substring(0, 15).replace(/\s+/g, '')));
-            if (colIdx === -1) colIdx = cabecera.findIndex(c => c.toLowerCase().includes('p' + (pIdx + 1)));
-            
-            if (colIdx !== -1 && fila[colIdx]) {
-                let resp = fila[colIdx].replace(/^"|"$/g, '').trim();
-                let escalaIdx = escalas.findIndex(e => resp.toLowerCase() === e.toLowerCase());
-                if (escalaIdx !== -1) {
-                    conteosPreguntas[pIdx][escalaIdx]++;
-                    if (pIdx < 5) dimCuidado[escalaIdx]++;
-                    else dimRecuperacion[escalaIdx]++;
+                if (filas.length <= 1) {
+                    document.getElementById('loader').innerText = "Aún no hay respuestas registradas en el formulario.";
+                    return;
                 }
+
+                const encabezados = filas[0].map(h => h.replace(/"/g, '').trim());
+                const registros = filas.slice(1);
+
+                document.getElementById('loader').style.display = 'none';
+                const grid = document.getElementById('chartsGrid');
+                grid.style.display = 'grid';
+
+                // Graficar a partir de la columna 1 (ignora la marca de tiempo)
+                for (let col = 1; col < encabezados.length; col++) {
+                    const tituloPregunta = encabezados[col];
+                    
+                    // Contar frecuencias de respuesta
+                    const conteo = {};
+                    registros.forEach(reg => {
+                        if (reg[col]) {
+                            const valor = reg[col].replace(/"/g, '').trim();
+                            if(valor) conteo[valor] = (conteo[valor] || 0) + 1;
+                        }
+                    });
+
+                    if (Object.keys(conteo).length === 0) continue;
+
+                    // Crear Tarjeta para el Gráfico
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `<h3>${tituloPregunta}</h3><div class="chart-container"><canvas id="chart-${col}"></canvas></div>`;
+                    grid.appendChild(card);
+
+                    // Configurar datos para Chart.js
+                    const labels = Object.keys(conteo);
+                    const dataValues = Object.values(conteo);
+                    const totalRespuestas = dataValues.reduce((a, b) => a + b, 0);
+
+                    const ctx = document.getElementById(`chart-${col}`).getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: dataValues,
+                                backgroundColor: ['#0d9488', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#10b981'],
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                datalabels: {
+                                    anchor: 'end',
+                                    align: 'top',
+                                    formatter: (value) => {
+                                        let porcentaje = ((value / totalRespuestas) * 100).toFixed(1);
+                                        return `${value} (${porcentaje}%)`;
+                                    },
+                                    font: { weight: 'bold', size: 11 },
+                                    color: '#475569'
+                                }
+                            },
+                            scales: {
+                                y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } },
+                                x: { grid: { display: false } }
+                            }
+                        }
+                    });
+                }
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loader').innerText = "Error al conectar en tiempo real con las respuestas.";
             }
-        });
-    });
+        }
 
-    // Mostrar sección de resultados
-    document.getElementById('contenido-reporte').style.display = 'block';
-    document.getElementById('total-pacientes').innerText = `Estudio de Muestra Procesado Exitosamente • N = ${totalPacientes} Pacientes`;
-    document.getElementById('txt-masc').innerText = `${masc} (${((masc/totalPacientes)*100).toFixed(1)}%)`;
-    document.getElementById('txt-fem').innerText = `${fem} (${((fem/totalPacientes)*100).toFixed(1)}%)`;
-
-    // Renderizar Gráficos
-    let gSexo = new Chart(document.getElementById('graficoSexo').getContext('2d'), {
-        type: 'pie',
-        data: { labels: ["Masculino", "Femenino"], datasets: [{ data: [masc, fem], backgroundColor: ['#3b82f6', '#ec4899'] }] },
-        options: opcionesComunes(true, totalPacientes)
-    });
-    graficosActivos.push(gSexo);
-
-    let gDim1 = new Chart(document.getElementById('dimCuidado').getContext('2d'), {
-        type: 'bar',
-        data: { labels: escalas, datasets: [{ data: dimCuidado, backgroundColor: coloresElegantes }] },
-        options: opcionesComunes(false, totalPacientes * 5)
-    });
-    let gDim2 = new Chart(document.getElementById('dimRecuperacion').getContext('2d'), {
-        type: 'bar',
-        data: { labels: escalas, datasets: [{ data: dimRecuperacion, backgroundColor: coloresElegantes }] },
-        options: opcionesComunes(false, totalPacientes * 5)
-    });
-    graficosActivos.push(gDim1, gDim2);
-
-    const contenedor = document.getElementById('preguntas-contenedor');
-    textosPreguntas.forEach((texto, idx) => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-            <div class="pregunta-titulo">Ítem ${idx + 1}: ${texto}</div>
-            <div class="grid-2">
-                <div class="canvas-container"><canvas id="bar-${idx}"></canvas></div>
-                <div class="canvas-container"><canvas id="pie-${idx}"></canvas></div>
-            </div>
-        `;
-        contenedor.appendChild(card);
-
-        let gBar = new Chart(document.getElementById(`bar-${idx}`).getContext('2d'), {
-            type: 'bar',
-            data: { labels: escalas, datasets: [{ data: conteosPreguntas[idx], backgroundColor: coloresElegantes }] },
-            options: opcionesComunes(false, totalPacientes)
-        });
-        let gPie = new Chart(document.getElementById(`pie-${idx}`).getContext('2d'), {
-            type: 'pie',
-            data: { labels: escalas, datasets: [{ data: conteosPreguntas[idx], backgroundColor: coloresElegantes }] },
-            options: opcionesComunes(true, totalPacientes)
-        });
-        graficosActivos.push(gBar, gPie);
-    });
-}
-</script>
+        window.onload = cargarDatos;
+    </script>
 </body>
 </html>
