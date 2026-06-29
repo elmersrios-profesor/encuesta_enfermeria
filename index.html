@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análisis Estadístico de Muestra Automatizado</title>
+    <title>Análisis Estadístico Automatizado - Enfermería</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <style>
@@ -13,11 +13,19 @@
         .header p { margin: 10px 0 0 0; opacity: 0.9; font-size: 1.1rem; }
         .container { max-width: 1150px; margin: 30px auto; padding: 0 20px; }
         .loading { text-align: center; font-size: 1.2rem; color: #0d9488; font-weight: bold; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; }
-        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; }
-        .card h3 { margin-top: 0; margin-bottom: 20px; color: #0f172a; font-size: 1.15rem; width: 100%; text-align: left; border-left: 4px solid #0d9488; padding-left: 10px; }
-        .chart-container { position: relative; width: 100%; height: 320px; display: flex; justify-content: center; }
-        @media (max-width: 500px) { .grid { grid-template-columns: 1fr; } .chart-container { height: 280px; } }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 30px; }
+        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        .card h3 { margin-top: 0; margin-bottom: 20px; color: #0f172a; font-size: 1.15rem; border-left: 4px solid #0d9488; padding-left: 10px; line-height: 1.4; }
+        .chart-container { position: relative; width: 100%; height: 260px; margin-bottom: 20px; display: flex; justify-content: center; }
+        
+        /* Estilos profesionales para las tablas estadísticas */
+        .table-container { width: 100%; margin-top: 15px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+        th { background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 10px; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; color: #334155; }
+        tr:last-child td { font-weight: bold; background-color: #f8fafc; border-top: 1px solid #cbd5e1; }
+        
+        @media (max-width: 550px) { .grid { grid-template-columns: 1fr; } .chart-container { height: 240px; } }
     </style>
 </head>
 <body>
@@ -28,13 +36,14 @@
     </div>
 
     <div class="container">
-        <div id="loader" class="loading">Cargando datos en tiempo real desde Google Sheets...</div>
+        <div id="loader" class="loading">Cargando base de datos y generando cuadros estadísticos...</div>
         <div id="chartsGrid" class="grid" style="display: none;"></div>
     </div>
 
     <script>
-        // Enlace corregido con la nomenclatura exacta de tu Google Sheets publicado
-   const sheetUrl = "https://docs.google.com/spreadsheets/d/1P7bLlbi_oIlflUuqKsR5O90te2D7IyjXudIDpAdteFI/export?format=csv&gid=1120900988";
+        // Tu enlace oficial y limpio de la base de datos de Google Sheets
+        const sheetUrl = "https://docs.google.com/spreadsheets/d/1P7bLlbi_oIlflUuqKsR5O90te2D7IyjXudIDpAdteFI/export?format=csv&gid=1120900988";
+
         Chart.register(ChartDataLabels);
 
         async function cargarDatos() {
@@ -42,7 +51,6 @@
                 const response = await fetch(sheetUrl);
                 const dataText = await response.text();
                 
-                // Procesar filas de manera limpia
                 const lineas = dataText.split(/\r?\n/).filter(linea => linea.trim() !== "");
                 
                 const registros = lineas.map(linea => {
@@ -66,7 +74,7 @@
                 });
 
                 if (registros.length <= 1) {
-                    document.getElementById('loader').innerText = "Conexión exitosa, pero la hoja no registra respuestas válidas aún.";
+                    document.getElementById('loader').innerText = "Conexión exitosa, pero la hoja no registra respuestas aún.";
                     return;
                 }
 
@@ -77,7 +85,7 @@
                 const grid = document.getElementById('chartsGrid');
                 grid.style.display = 'grid';
 
-                // Empezamos desde la columna 1 para saltarnos la fecha/hora
+                // Empezamos desde la columna 1 para omitir la marca de tiempo (Columna A)
                 for (let col = 1; col < encabezados.length; col++) {
                     const tituloPregunta = encabezados[col];
                     if(!tituloPregunta) continue;
@@ -92,15 +100,56 @@
 
                     if (Object.keys(conteo).length === 0) continue;
 
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = `<h3>${tituloPregunta}</h3><div class="chart-container"><canvas id="chart-${col}"></canvas></div>`;
-                    grid.appendChild(card);
-
                     const labels = Object.keys(conteo);
                     const dataValues = Object.values(conteo);
                     const totalRespuestas = dataValues.reduce((a, b) => a + b, 0);
 
+                    // Generar estructura de la tarjeta: Título + Gráfico + Tabla Estadística
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    
+                    // Crear filas dinámicas para la tabla de frecuencias
+                    let filasTablaHtml = "";
+                    labels.forEach((label, index) => {
+                        let cant = dataValues[index];
+                        let porc = ((cant / totalRespuestas) * 100).toFixed(1);
+                        filasTablaHtml += `
+                            <tr>
+                                <td>${label}</td>
+                                <td style="text-align: center;">${cant}</td>
+                                <td style="text-align: center;">${porc}%</td>
+                            </tr>
+                        `;
+                    });
+
+                    card.innerHTML = `
+                        <h3>${tituloPregunta}</h3>
+                        <div class="chart-container">
+                            <canvas id="chart-${col}"></canvas>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Variable / Alternativa</th>
+                                        <th style="text-align: center;">Frecuencia Absoluta (f)</th>
+                                        <th style="text-align: center;">Porcentaje (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${filasTablaHtml}
+                                    <tr>
+                                        <td><strong>Total Muestra</strong></td>
+                                        <td style="text-align: center;"><strong>${totalRespuestas}</strong></td>
+                                        <td style="text-align: center;"><strong>100.0%</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+
+                    // Renderizar el gráfico de barras correspondiente
                     const ctx = document.getElementById(`chart-${col}`).getContext('2d');
                     new Chart(ctx, {
                         type: 'bar',
@@ -138,7 +187,7 @@
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('loader').innerText = "Error de sincronización con Google Sheets.";
+                document.getElementById('loader').innerText = "Error al sincronizar datos. Verifica la publicación de Google Sheets.";
             }
         }
 
